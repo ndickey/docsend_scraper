@@ -31,20 +31,23 @@ def trim(im):
 def savepdf(url="", emailad="", emailpass=""):
 
     # Check if it exists
-    url = request.form['url'].encode("ascii")
-    emailad = request.form['emailad'].encode("ascii")
-    emailpass = request.form['emailpass'].encode("ascii")
+    url = request.form['url']
+    emailad = request.form['emailad']
+    emailpass = request.form['emailpass']
 
     loc = url.rfind('/')
     idname = url[24+1:]+'.pdf'
     
     chrome_options = Options()
     chrome_options.add_argument("--headless")
+    chrome_options.add_argument('--no-sandbox')
+    chrome_options.add_argument('--disable-dev-shm-usage')
+    chrome_options.add_argument('--window-size=1400,1400')
 
     if platform.system() == "Darwin":
         browser = webdriver.Chrome(r'./chromedriver')
     else:
-        browser = webdriver.Chrome(r'./chromedriver_linux', chrome_options=chrome_options)
+        browser = webdriver.Chrome(r'/chromedriver/chromedriver', chrome_options=chrome_options)
 
     loc = str.find(url,"view")
     ID = url[loc+5:]
@@ -149,4 +152,4 @@ if __name__ == "__main__":
     # Setting debug to True enables debug output. This line should be
     # removed before deploying a production app.
     application.debug = True
-    application.run(host='0.0.0.0')
+    application.run(host='0.0.0.0', threaded=True)
