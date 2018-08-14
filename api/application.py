@@ -1,155 +1,156 @@
-from flask import Flask, render_template, request, redirect, make_response
-from flask import send_file
-from selenium import webdriver
-from selenium.webdriver.common.keys import Keys
-from selenium.webdriver.common.by import By
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
-from selenium.webdriver.chrome.options import Options  
-from selenium.webdriver.common.keys import Keys
-from flask_bootstrap import Bootstrap
+import json
+import re
+
+import http.cookiejar
+from urllib.request import Request, build_opener
+import urllib
+from urllib import parse
+from http.cookiejar import CookieJar
+
+from flask import Flask, render_template, request, make_response, jsonify, send_from_directory
+
 from fpdf import FPDF
 from PIL import Image, ImageChops
-import string
+
 import os
-import platform
-import time
-import random
 
-# EB looks for an 'application' callable by default.
 application = Flask(__name__)
-bootstrap = Bootstrap(application)
-def trim(im):
-    bg = Image.new(im.mode, im.size, im.getpixel((50,50)))
-    diff = ImageChops.difference(im, bg)
-    diff = ImageChops.add(diff, diff, 2.0, -10)
-    bbox = diff.getbbox()
-    if bbox:
-        return im.crop(bbox)
 
-@application.route('/savepdf', methods = ['POST'])
-def savepdf(url="", emailad="", emailpass=""):
-
-    # Check if it exists
-    url = request.form['url']
-    emailad = request.form['emailad']
-    emailpass = request.form['emailpass']
-
-    loc = url.rfind('/')
-    idname = url[24+1:]+'.pdf'
-    
-    chrome_options = Options()
-    chrome_options.add_argument("--headless")
-    chrome_options.add_argument('--no-sandbox')
-    chrome_options.add_argument('--disable-dev-shm-usage')
-    chrome_options.add_argument('--window-size=1400,1400')
-
-    if platform.system() == "Darwin":
-        browser = webdriver.Chrome(r'./chromedriver')
-    else:
-        browser = webdriver.Chrome(r'/chromedriver/chromedriver', chrome_options=chrome_options)
-
-    loc = str.find(url,"view")
-    ID = url[loc+5:]
-    
-    browser.get(url)
-    time.sleep(2)
-    try:
-        element = WebDriverWait(browser, 4).until(
-            EC.presence_of_element_located((By.ID, "youtube-modal"))
-        )
-    except:
-        print("failed")    
-    
-    # Check if there's email input
-    # Check if there's password input
-    
-    try:
-        email_ID = browser.find_element_by_name('visitor[email]')
-        email_ID.send_keys(emailad)
-    except:
-        print("no e-mail required")
-    time.sleep(1)    
-    try:
-        pass_ID = browser.find_element_by_name('visitor[passcode]')
-        pass_ID.send_keys(emailpass)
-    except:
-        print("no password required")
-    time.sleep(1)    
-    try:
-        email_ID.send_keys(Keys.TAB)
-        email_ID.send_keys(Keys.ENTER)
-    except:
-        print("ae")
-    
-    exitflag = 0
-    browser.switch_to_active_element().send_keys(Keys.RIGHT)
-    
-    while exitflag == 0:
-        #click right until no blank pagescheck until pages stabilizes
-        browser.switch_to_active_element().send_keys(Keys.RIGHT)
-        time.sleep(0.4+random.randint(1,100)/100)
-        pages = browser.find_elements_by_css_selector(".preso-view.page-view")
-        urls = []
-        for x in pages:
-            urls.append(x.get_attribute("src"))
-        if any("blank.gif" in s for s in urls):
-            exitflag = 0
-        else:
-            exitflag = 1
-            
-    urls = []
-    for x in pages:
-        urls.append(x.get_attribute("src"))
-        
-    c = 1
-    for x in urls:
-        browser.get(x)
-        browser.save_screenshot("AX"+str(c)+".png")
-        c = c+1
-        
-    imagelist = []
-    for i in range(1,c):
-        imagelist.append("AX"+str(i)+".png")
-     
-    time.sleep(10)   
-    for img in imagelist:
-        im = Image.open(img)
-        im = trim(im)
-        im.save(img)
-    
-    im = Image.open(imagelist[0])
-    wheight = im.size[0]
-    wwidth = im.size[1]
-    im.close()    
-    
-    pdf = FPDF("L","pt",[wwidth,wheight])
-    pdf.set_margins(0,0,0)
-    
-    for image in imagelist:
-        pdf.add_page()
-        pdf.image(image,0,0)
-        
-    for i in (imagelist):
-        os.remove(i)
-    
-    cdir = os.getcwd()        
-    browser.close()  
-
-    # now serve the PDF
-    response = make_response(pdf.output(dest='S'))
-    response.headers.set('Content-Disposition', 'attachment', filename=ID + '.pdf')
-    response.headers.set('Content-Type', 'application/pdf')
-    return response
-
+agentheaders={'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_9_3) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/35.0.1916.47 Safari/537.36'}
 
 @application.route('/')
-def hello_world():
+def render_index():
     return render_template('index.html')
 
-# run the app.
+def convert_images_to_pdf(image_array, opener_ref, init_h):
+    h = init_h.copy()
+    pdf_set = False
+    pdf = None
+    for index, r in enumerate(image_array):
+        img_req = Request(r, data=None, headers=h)
+        img_resp = opener_ref.open(img_req)
+        if img_resp:
+            file_type = img_resp.headers['Content-Type'].split(';')[0].lower().split("/")[1]
+            file_path = '/tmp/' + str(index) + '.' + file_type
+            with open(file_path, 'wb') as f:
+                f.write(img_resp.read())
+                f.close()
+                try:
+                    im = Image.open(file_path)
+                    if not pdf_set:
+                        pdf = FPDF("L","pt",[im.size[1],im.size[0]])
+                        pdf.set_margins(0,0,0)
+                        pdf_set = True
+                    pdf.add_page()
+                    pdf.image(file_path, 0, 0)
+                except:
+                    pass
+            if os.path.isfile(file_path):
+                os.remove(file_path)
+    resp_file = pdf.output('/tmp/pdf_output.pdf', 'F')
+    return resp_file
+
+def update_cookie(header, cookie_jar):
+    header_copy = header.copy()
+    cookie_refs = []
+    for c in cookie_jar:
+        cookie_name, cookie_val = str(c.__dict__.get('name')), str(c.__dict__.get('value'))
+        cookie_refs.append( cookie_name + "=" + cookie_val )
+    if cookie_refs:
+        header_copy['Cookie'] = "; ".join(cookie_refs)
+    return header_copy
+    
+
+@application.route('/now/<file_id>', methods=['GET', 'POST'])
+def download_pdf(file_id):
+    # retrieve email and password
+    content = request.get_json(force=True) or {}
+    email = content.get('email') or 'dummy@nowhere.com'
+    password = content.get('password') or 'notvalidpassword'
+
+    error_msg = "unknown error"
+
+    try:
+        # set basic cookies
+        cookie_request = Request("https://docsend.com/view/" + file_id, data=None, headers=agentheaders)
+        cj = CookieJar()
+        op = build_opener(urllib.request.HTTPCookieProcessor(cj))
+        cookie_resp = op.open(cookie_request)
+        image_array_body = ""
+        if cookie_resp:
+            auth_result = cookie_resp.read()
+
+            decoded = auth_result.decode()
+
+            auth_matches = re.search(r'link_auth_form\[passcode\]', decoded)
+            auth_matches_email = re.search(r'link_auth_form\[email\]', decoded)
+            if auth_matches:
+                auth_token_match = re.search(r'authenticity_token\"\s*value\=\"(.*)\"', decoded)
+                if auth_token_match:
+                    auth_token = auth_token_match[1]
+                    # password required
+                    # try given password
+                    if password:
+                        data_send = parse.urlencode({"_method": "patch", "authenticity_token": auth_token, 'commit': "Continue", "link_auth_form[email]": email, "link_auth_form[passcode]": password}).encode("ascii")
+                        auth_request = Request("https://docsend.com/view/" + file_id, data=data_send, headers=agentheaders)
+                        h = agentheaders.copy()
+                        h = update_cookie(h, cj)
+                        
+                        auth_request = Request("https://docsend.com/view/" + file_id, data=data_send, headers=h)
+                        auth_result = op.open(auth_request)
+                        if auth_result:
+                            auth_body = auth_result.read()
+                            incorrect_email = re.search(r'class\=\"error\"\>Passcode', auth_body.decode())
+                            if incorrect_email:
+                                return jsonify({"error": 'password invalid'}), 401
+                            image_array_body = auth_body
+
+            elif auth_matches_email:
+                auth_token_match = re.search(r'authenticity_token\"\s*value\=\"(.*)\"', decoded)
+                if auth_token_match:
+                    auth_token = auth_token_match[1]
+                    data_send = parse.urlencode({"_method": "patch", "authenticity_token": auth_token, 'commit': "Continue", "link_auth_form[email]": email}).encode("ascii")
+                    auth_request = Request("https://docsend.com/view/" + file_id, data=data_send, headers=agentheaders)
+                    h = agentheaders.copy()
+                    h = update_cookie(h, cj)
+
+                    auth_request = Request("https://docsend.com/view/" + file_id, data=data_send, headers=h)
+                    auth_result = op.open(auth_request)
+                    if auth_result:
+                        image_array_body = auth_result.read()
+            else:
+                image_array_body = cookie_resp.read()
+
+        data_matches = re.findall(r'data\-url\=\'(https\:\/\/docsend.com\/view\/.*\/thumb\/\d+)\'', image_array_body.decode())
+        if data_matches:
+            data_matches = [thumb.replace('thumb', 'page_data') for thumb in data_matches]
+
+        results = []
+
+        h = None
+        for index, d in enumerate(data_matches):
+            if index >= 0:
+                h = agentheaders.copy()
+                h = update_cookie(h, cj)
+
+            req = Request(d, data=None, headers=h)
+            try:
+                req_resp = op.open(req)
+            except Exception as e:
+                return jsonify({"error": 'password invalid'}), 401
+            if req_resp:
+                tada = req_resp.read()
+                tada_json = json.loads(tada)
+                results.append(tada_json.get('imageUrl'))
+
+        if results:
+            pdf_file = convert_images_to_pdf(results, op, h)
+            return send_from_directory('/tmp/', 'pdf_output.pdf')
+
+    except Exception as e:
+        error_msg = str(e)
+
+    return jsonify({"error": error_msg}), 401
+
 if __name__ == "__main__":
-    # Setting debug to True enables debug output. This line should be
-    # removed before deploying a production app.
-    application.debug = True
-    application.run(host='0.0.0.0', threaded=True)
+    application.run(host='0.0.0.0', debug=True, threaded=True)

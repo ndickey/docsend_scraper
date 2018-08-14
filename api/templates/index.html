@@ -1,52 +1,33 @@
-{% extends "bootstrap/base.html" %}
-{% block title %}DocSend Scraper - Beta{% endblock %}
-
-{% block styles %}
-{{super()}}
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
-{% endblock %}
-
-
-{% block scripts %}
-{{super()}}
-<script>
-      
-$('.btn').on('click', function() {
-  var $this = $(this);
-  $this.button('loading');
-});
-  
-</script>
-
-{% endblock %}
-
-{% block content %}
+<html>
+<head>
+    <title>DocSend Scraper - Beta</title>
+    <script src="//cdnjs.cloudflare.com/ajax/libs/jquery/1.12.4/jquery.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/downloadjs/1.4.8/download.min.js"></script>
+    <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.3.7/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css" />
+</head>
+<body>
 <div class="container">
   <h3 align=center>DocSend Scraper (Beta)</h3>
-  <form class="form-horizontal" action="/savepdf" method="post">
-    <div class="form-group">
-      <label class="control-label col-sm-2" for="email">Link:</label>
-      <div class="col-sm-10">
-        <input type="text" class="form-control" id="url" placeholder="enter link, i.e. https://docsend.com/view/p8jxsqr" name="url">
-      </div>
-    </div>
-    <div class="form-group">
-      <label class="control-label col-sm-2" for="pwd">Email Address:</label>
-      <div class="col-sm-10">
-        <input type="text" class="form-control" id="emailad" placeholder="enter email if needed ..." name="emailad">
-      </div>
-    </div>
-    <div class="form-group">
-      <label class="control-label col-sm-2" for="pwd">Docsend Password:</label>
-      <div class="col-sm-10">
-        <input type="text" class="form-control" id="emailpass" placeholder="enter password if needed ..." name="emailpass">
-      </div>
-    </div>
-    <div class="form-group">
-      <div class="col-sm-offset-2 col-sm-10">
-        <button type="submit" class="btn btn-primary btn-med" id="load" data-loading-text="Scraping, every slide takes 3 seconds so your download will begin shortly!">Scrape</button>
-      </div>
-    </div>
-  </form>
+
+  <div id="app_container"></div>
+
 </div>
-{% endblock %}
+
+<script src="//cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.3.7/js/bootstrap.min.js"></script>
+
+<!-- Load React -->
+<!-- Note: when deploying, replace "development.js" with "production.min.js". -->
+<script src="https://unpkg.com/react@16/umd/react.development.js" crossorigin></script>
+<script src="https://unpkg.com/react-dom@16/umd/react-dom.development.js" crossorigin></script>
+
+<!-- Load React App -->
+<script src="{{ url_for('static', filename='js/app.js')}}"></script>
+<script type="text/javascript">
+    $(document).ready(function() {
+        let domContainer = document.querySelector('#app_container');
+        ReactDOM.render(react_render(ScraperApp), domContainer);
+    })
+</script>
+</body>
+</html>
