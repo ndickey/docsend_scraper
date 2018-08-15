@@ -1,0 +1,16 @@
+version: "2"
+
+services:
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: "python application.py"
+    volumes:
+      - ./api:/api
+    environment:
+      - PYTHONPATH=/api
+      - PYTHONDONTWRITEBYTECODE=0
+    ports:
+      - "80:5000"

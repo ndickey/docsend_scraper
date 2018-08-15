@@ -1,0 +1,33 @@
+<html>
+<head>
+    <title>DocSend Scraper - Beta</title>
+    <script src="//cdnjs.cloudflare.com/ajax/libs/jquery/1.12.4/jquery.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/downloadjs/1.4.8/download.min.js"></script>
+    <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.3.7/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css" />
+</head>
+<body>
+<div class="container">
+  <h3 align=center>DocSend Scraper (Beta)</h3>
+
+  <div id="app_container"></div>
+
+</div>
+
+<script src="//cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.3.7/js/bootstrap.min.js"></script>
+
+<!-- Load React -->
+<!-- Note: when deploying, replace "development.js" with "production.min.js". -->
+<script src="https://unpkg.com/react@16/umd/react.development.js" crossorigin></script>
+<script src="https://unpkg.com/react-dom@16/umd/react-dom.development.js" crossorigin></script>
+
+<!-- Load React App -->
+<script src="{{ url_for('static', filename='js/app.js')}}"></script>
+<script type="text/javascript">
+    $(document).ready(function() {
+        let domContainer = document.querySelector('#app_container');
+        ReactDOM.render(react_render(ScraperApp), domContainer);
+    })
+</script>
+</body>
+</html>
